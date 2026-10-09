@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<style>
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<title>お礼LINEメーカー（長崎）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --bg: #F3F5F7;
+    --surface: #FFFFFF;
+    --ink: #1E2638;
+    --muted: #5B6477;
+    --line: #DCE1E7;
+    --accent: #1D6B5F;
+    --accent-soft: #E2EFEB;
+    --on-accent: #FFFFFF;
+    --warn: #9A5B00;
+    --warn-soft: #FFF3DC;
+    --bubble: #EEF6F3;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #12161D;
+      --surface: #1A2029;
+      --ink: #E6E9EF;
+      --muted: #9AA3B5;
+      --line: #2C3442;
+      --accent: #5FC2AE;
+      --accent-soft: #1C3430;
+      --on-accent: #0D1B18;
+      --warn: #F2B458;
+      --warn-soft: #3A2C14;
+      --bubble: #1E2B29;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #12161D;
+    --surface: #1A2029;
+    --ink: #E6E9EF;
+    --muted: #9AA3B5;
+    --line: #2C3442;
+    --accent: #5FC2AE;
+    --accent-soft: #1C3430;
+    --on-accent: #0D1B18;
+    --warn: #F2B458;
+    --warn-soft: #3A2C14;
+    --bubble: #1E2B29;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-inline: 16px;
+    padding-block: 20px 40px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .layout { display: grid; gap: 20px; }
+  @media (min-width: 880px) {
+    .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+    .preview { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: grid;
+    gap: 22px;
+  }
+  .step { display: grid; gap: 10px; }
+  .step-head { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .step-no {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: inline-grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 13px; font-weight: 700; flex: none;
+  }
+  .step-head small { font-weight: 400; color: var(--muted); font-size: 13px; }
+
+  .seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .seg button {
+    font: inherit;
+    min-height: 62px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 8px 6px;
+    cursor: pointer;
+    display: grid; align-content: center; gap: 2px;
+    transition: border-color .15s, background .15s;
+  }
+  .seg button b { font-size: 16px; }
+  .seg button span { font-size: 12px; color: var(--muted); }
+  .seg button:hover { border-color: var(--accent); }
+  .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .seg button[aria-pressed="true"] span { color: var(--on-accent); opacity: .85; }
+
+  .seg.seg-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mode {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .mode button {
+    font: inherit; font-weight: 700; min-height: 46px; cursor: pointer;
+    border: none; background: var(--surface); color: var(--muted);
+  }
+  .mode button + button { border-left: 1.5px solid var(--line); }
+  .mode button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); cursor: pointer; }
+  .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+  .guide {
+    display: grid; gap: 10px; font-size: 13px; line-height: 1.6;
+    background: var(--bg); border-radius: 10px; padding: 12px 14px;
+  }
+  .guide h3 { margin: 0 0 2px; font-size: 13px; }
+  .guide ul { margin: 0; padding-left: 1.2em; display: grid; gap: 2px; }
+  .guide p { margin: 0; }
+  .guide-rule { font-weight: 700; color: var(--accent); }
+  .guide-note { color: var(--muted); margin-top: 4px !important; }
+
+  .store-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    background: var(--accent-soft); border-radius: 10px; padding: 10px 12px;
+  }
+  .store-bar label { font-weight: 700; color: var(--accent); font-size: 15px; }
+  .store-bar select {
+    font: inherit; flex: 1 1 200px; min-width: 0; min-height: 44px;
+    padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 8px;
+    background: var(--surface); color: var(--ink);
+  }
+  .store-bar.missing { background: var(--warn-soft); }
+  .store-bar.missing label { color: var(--warn); }
+
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  input[type="text"], textarea {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; width: 100%;
+  }
+  input[type="text"]:focus, textarea:focus, button:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    outline-offset: 1px; border-color: var(--accent);
+  }
+  #hitokoto { min-height: 72px; resize: vertical; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font: inherit; font-size: 13px;
+    border: 1px dashed var(--line); background: var(--bg); color: var(--ink);
+    border-radius: 999px; padding: 6px 12px; cursor: pointer; text-align: left;
+  }
+  .chip:hover { border-color: var(--accent); border-style: solid; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0; }
+
+  .preview .panel { gap: 14px; }
+  .preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .preview-head h2 { font-size: 15px; margin: 0; }
+  .tag { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .tag.edited { background: var(--warn-soft); color: var(--warn); }
+
+  #message {
+    min-height: 340px; resize: vertical;
+    background: var(--bubble); border-color: transparent;
+    line-height: 1.75; font-size: 15px;
+    border-radius: 16px 16px 16px 4px;
+  }
+  .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .notice {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    background: var(--warn-soft); color: var(--warn);
+    border-radius: 10px; padding: 10px 12px; font-size: 13px;
+  }
+  .notice button { font: inherit; font-size: 13px; }
+
+  .actions { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+  .btn {
+    font: inherit; font-weight: 700; cursor: pointer;
+    border-radius: 10px; min-height: 54px; padding: 8px 14px;
+    border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-size: 17px; }
+  .btn.small { min-height: 34px; padding: 4px 12px; font-weight: 500; border-radius: 8px; }
+  .btn.link { border: none; background: none; color: inherit; text-decoration: underline; padding: 0; min-height: auto; font-weight: 500; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+    transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    background: var(--ink); color: var(--bg);
+    padding: 12px 18px; border-radius: 10px; font-size: 14px;
+    max-width: calc(100% - 32px); text-align: center;
+    transition: opacity .2s, transform .2s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media (max-width: 420px) {
+    .fields { grid-template-columns: 1fr; }
+    .seg button b { font-size: 15px; }
+  }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>お礼LINEメーカー（長崎）</h1>
+    <p>選ぶ → 一言入れる → コピーしてLINEに貼り付け</p>
+  </header>
+
+  <div class="layout">
+    <section class="panel" aria-label="入力">
+      <div class="store-bar" id="store-bar">
+        <label for="store">本日の店舗</label>
+        <select id="store" autocomplete="off">
+          <option value="">店舗を選んでください</option>
+        </select>
+      </div>
+
+      <div class="mode" id="seg-mode" role="group" aria-label="作る文面">
+        <button type="button" id="m-thanks" data-value="thanks" aria-pressed="true">お礼を送る</button>
+        <button type="button" id="m-reply" data-value="reply" aria-pressed="false">返信が来たとき</button>
+      </div>
+
+      <div class="step reply-only" hidden>
+        <div class="step-head"><span class="step-no">1</span>お客様からの返信</div>
+        <div class="seg seg-2" id="seg-reply" role="group" aria-label="お客様からの返信">
+          <button type="button" id="rp-thanks" data-value="thanks" aria-pressed="true"><b>お礼・あいさつ</b><span>ここで終わる</span></button>
+          <button type="button" id="rp-consult" data-value="consult" aria-pressed="false"><b>相談・質問</b><span>電話へ案内</span></button>
+        </div>
+        <label class="check" for="reply-sig" id="reply-sig-row">
+          <input type="checkbox" id="reply-sig"> 署名を付ける
+        </label>
+        <div class="guide">
+          <p class="guide-rule">LINEのやり取りは基本1往復まで。相談や質問の内容が来たら、お電話へご案内します。</p>
+          <div>
+            <h3>どちらを選ぶ？</h3>
+            <ul>
+              <li>「ありがとう」「また行きます」などのあいさつ → <b>お礼・あいさつ</b></li>
+              <li>質問・相談・「これも売れますか？」など → <b>相談・質問</b>（署名付きで電話へ案内）</li>
+            </ul>
+          </div>
+          <div>
+            <h3>「お礼・あいさつ」で署名を付けるとよいとき</h3>
+            <ul>
+              <li>お礼LINEを送ってから日数がたっていて、上の署名が見えにくい</li>
+              <li>「また行きます」「また相談したい」など、次につながる言葉がある</li>
+            </ul>
+            <p class="guide-note">それ以外は署名なしの短い返事で、自然にやり取りを終えましょう。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="step thanks-only">
+        <div class="step-head"><span class="step-no">1</span>今日の結果</div>
+        <div class="seg" id="seg-result" role="group" aria-label="今日の結果">
+          <button type="button" id="r-seiritsu" data-value="seiritsu" aria-pressed="true"><b>成立</b><span>買取できた</span></button>
+          <button type="button" id="r-fuseiritsu" data-value="fuseiritsu" aria-pressed="false"><b>不成立</b><span>逃し</span></button>
+          <button type="button" id="r-toiawase" data-value="toiawase" aria-pressed="false"><b>問い合わせ</b><span>値段つかず</span></button>
+        </div>
+      </div>
+
+      <div class="step thanks-only">
+        <div class="step-head"><span class="step-no">2</span>来店回数</div>
+        <div class="seg" id="seg-visit" role="group" aria-label="来店回数">
+          <button type="button" id="v-1" data-value="1" aria-pressed="true"><b>1回目</b><span>はじめて</span></button>
+          <button type="button" id="v-2" data-value="2" aria-pressed="false"><b>2回目</b><span>また来てくれた</span></button>
+          <button type="button" id="v-3" data-value="3" aria-pressed="false"><b>3回目〜</b><span>いつもの方</span></button>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head"><span class="step-no" id="name-step-no">3</span>名前 <small>空欄なら入りません</small></div>
+        <div class="fields">
+          <label for="customer">お客様のお名前
+            <input type="text" id="customer" placeholder="例：山田" autocomplete="off">
+          </label>
+          <label for="staff">担当者名
+            <input type="text" id="staff" placeholder="例：佐藤" autocomplete="off">
+          </label>
+        </div>
+      </div>
+
+      <div class="step thanks-only">
+        <div class="step-head"><span class="step-no">4</span>その方だけの一言 <small>接客中の話題を1文だけ</small></div>
+        <textarea id="hitokoto" placeholder="例：お話されていた北海道旅行、楽しんできてくださいね！"></textarea>
+        <div class="chips" id="chips"></div>
+        <p class="hint">候補をタップすると入力欄に入ります。「〇〇」の部分だけ書き換えてください。</p>
+      </div>
+    </section>
+
+    <section class="preview" aria-label="文面">
+      <div class="panel">
+        <div class="preview-head">
+          <h2>送る文面</h2>
+          <span class="tag" id="state-tag">たたき台</span>
+        </div>
+
+        <div class="notice" id="stale" hidden>
+          <span>選択が変わりました。手直しした文面はそのままです。</span>
+          <button type="button" class="btn small" id="rebuild">たたき台を作り直す</button>
+        </div>
+
+        <textarea id="message" aria-label="送る文面（自由に編集できます）"></textarea>
+        <div class="meta">
+          <span>文面は自由に書き換えられます</span>
+          <span id="count">0文字</span>
+        </div>
+
+        <div class="notice" id="store-warn" hidden>
+          <span>本日の店舗が選ばれていません。画面上の「本日の店舗」から選んでください。</span>
+        </div>
+
+        <div class="notice" id="placeholder-warn" hidden>
+          <span>「〇〇」が残っています。書き換えてから送りましょう。</span>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn primary" id="copy">コピーする</button>
+          <button type="button" class="btn" id="next">次のお客様へ</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  // ===== テンプレート（ここを書き換えれば全員の文面が変わります） =====
+  // 署名（文面の最後に入ります）
+  var SHOP = "買取専門店 諭吉";
+  var TEL = "0120-679-268";
+  var HOURS = "10:00～19:00";
+  // 店舗一覧（店舗が増えたらここに1行追加）。署名に書く表記そのままで入れます
+  var STORES = [
+    "イオンタウン早岐店",
+    "マックスバリュ佐々店",
+    "松浦志佐店",
+    "諫早駅西口店",
+    "エレナ上小島店",
+    "エレナ日見店",
+    "住吉店",
+    "浜町店",
+    "エレナ長与店",
+    "イオン島原店",
+    "新大村駅前店",
+    "エレナ大村中央店",
+    "宝町店"
+  ];
+
+  // 書き出し：withStaff は担当者名を入れたとき、plain は空欄のとき。{staff} は担当者名に置き換わります
+  var OPENING = {
+    1: {
+      withStaff: "本日はご来店いただき、ありがとうございました！\n担当させていただいた{staff}です😊",
+      plain: "本日はご来店いただき、ありがとうございました😊"
+    },
+    2: {
+      withStaff: "本日もご来店いただき、ありがとうございました！\nまたお越しいただけて、とても嬉しかったです😊\n担当の{staff}です。",
+      plain: "本日もご来店いただき、ありがとうございました！\nまたお越しいただけて、とても嬉しかったです😊"
+    },
+    3: {
+      withStaff: "いつもご利用いただき、ありがとうございます！\n今回も担当させていただき、ありがとうございました😊\n{staff}です。",
+      plain: "いつもご利用いただき、ありがとうございます！\n今回もご来店いただき、ありがとうございました😊"
+    }
+  };
+  var RESULT = {
+    seiritsu: "大切なお品物をお任せいただき、ありがとうございました。",
+    fuseiritsu: "数あるお店の中から当店を選んでいただき、ありがとうございました。\n大切なお品物を拝見でき、お話を伺えてとても嬉しかったです。\n\n相場は日々変わりますので、今回のお品物も、お気持ちが固まったタイミングでまたいつでもお持ちください。\n次回もしっかり査定させていただきます！",
+    toiawase: "本日はお品物をお持ちいただき、ありがとうございました。\n今回しっかり確認できたことで、お品物の整理やお片付けの進め方も決めやすくなったかと思います。\n\nほかにも「これはどうだろう？」と気になるお品物があれば、いつでもお気軽にお持ちください！"
+  };
+  var CLOSING = {
+    1: "気になるお品物がございましたら、「これって売れるのかな？」くらいでも大丈夫ですので、お気軽にお持ちください！\nまたお会いできるのを楽しみにしております！",
+    2: "また何かございましたら、査定だけでも大丈夫ですので、いつでもお気軽にお立ち寄りください！\nまたお会いできるのを楽しみにしております！",
+    3: "「これってどうなんだろう？」というお品物も、いつでもお気軽にお持ちください。\n今後ともよろしくお願いいたします！"
+  };
+  // お客様から返信が来たとき
+  var REPLY = {
+    thanks: "ご返信ありがとうございます！\nまたお会いできるのを楽しみにしております😊",
+    consult: "ご連絡ありがとうございます！\n詳しくお伺いしたいので、お手数ですが下記までお電話いただけますでしょうか。\nお電話の際に「LINEを見た」とお伝えいただけるとスムーズです😊"
+  };
+  var CHIPS_COMMON = [
+    "〇〇のお話、とても楽しかったです！",
+    "お話されていた〇〇、楽しんできてくださいね！",
+    "お話されていた〇〇も、気になった際はいつでもご相談ください！"
+  ];
+  var CHIPS_BY_RESULT = {
+    seiritsu: ["お持ちいただいた〇〇、大切にされていたのが伝わりました。"],
+    fuseiritsu: [
+      "今回の〇〇、手放そうと思われた際は、ぜひまた一番にご相談ください！",
+      "〇〇の件、他のお店と比べていただいてからでも大歓迎です。",
+      "〇〇以外にも気になるお品物があれば、一緒にお持ちください！"
+    ],
+    toiawase: [
+      "〇〇のお片付け、スッキリ進むといいですね！",
+      "〇〇の整理で迷われることがあれば、いつでもご相談ください！",
+      "〇〇以外にも、お家に眠っているお品物があればぜひ見せてください！"
+    ]
+  };
+  function seasonalChip() {
+    var m = new Date().getMonth() + 1;
+    if (m === 12 || m <= 2) return "寒い日が続きますので、お体にお気をつけください。";
+    if (m <= 5) return "過ごしやすい季節になりましたね。お出かけの際はぜひお立ち寄りください。";
+    if (m <= 8) return "暑い日が続きますので、どうぞご自愛ください。";
+    return "朝晩冷えてきましたので、お体にお気をつけください。";
+  }
+  // ==================================================================
+
+  var state = { mode: "thanks", reply: "thanks", result: "seiritsu", visit: "1", edited: false, lastBuilt: "" };
+  var $ = function (id) { return document.getElementById(id); };
+  var msg = $("message"), hitokoto = $("hitokoto"), customer = $("customer"), staff = $("staff"), store = $("store");
+
+  // 店舗はその日のうちだけ覚える（日付が変わったら選び直し）
+  var STORE_KEY = "thanks-line-nagasaki-store-today";
+  var storeDate = null;
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  STORES.forEach(function (name) {
+    var o = document.createElement("option");
+    o.value = name; o.textContent = name;
+    store.appendChild(o);
+  });
+  // ブラウザが前回の選択を勝手に復元しないよう、保存した日付と合うときだけ店舗を入れる
+  store.value = "";
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (saved && saved.date === today() && STORES.indexOf(saved.store) >= 0) {
+      store.value = saved.store; storeDate = saved.date;
+    }
+  } catch (e) {}
+  function checkDay() {
+    if (storeDate && storeDate !== today()) {
+      store.value = ""; storeDate = null;
+      update();
+    }
+  }
+
+  function signature() {
+    var lines = ["――――――――", SHOP + (store.value.trim() ? " " + store.value.trim() : "")];
+    if (staff.value.trim()) lines.push("担当：" + staff.value.trim());
+    lines.push("お問い合わせ・ご相談はお電話で", "📞 " + TEL, "（受付時間 " + HOURS + "）");
+    return lines.join("\n");
+  }
+
+  function build() {
+    var staffName = staff.value.trim();
+    var parts = [];
+    var name = customer.value.trim();
+    if (name) parts.push(name.replace(/(様|さん)$/, "") + "様");
+    if (state.mode === "reply") {
+      parts.push(REPLY[state.reply]);
+      if (state.reply === "consult" || $("reply-sig").checked) parts.push(signature());
+      return parts.join("\n\n");
+    }
+    var opening = OPENING[state.visit];
+    parts.push(staffName ? opening.withStaff.replace("{staff}", staffName) : opening.plain);
+    parts.push(RESULT[state.result]);
+    var h = hitokoto.value.trim();
+    if (h) parts.push(h);
+    parts.push(CLOSING[state.visit]);
+    parts.push(signature());
+    return parts.join("\n\n");
+  }
+
+  function applyMode() {
+    var isReply = state.mode === "reply";
+    document.querySelectorAll(".thanks-only").forEach(function (el) { el.hidden = isReply; });
+    document.querySelectorAll(".reply-only").forEach(function (el) { el.hidden = !isReply; });
+    $("name-step-no").textContent = isReply ? "2" : "3";
+    // 「相談・質問」は必ず署名付きなので、チェック欄は「お礼・あいさつ」のときだけ出す
+    $("reply-sig-row").hidden = state.reply !== "thanks";
+  }
+
+  function renderChips() {
+    var list = CHIPS_BY_RESULT[state.result].concat(CHIPS_COMMON, [seasonalChip()]);
+    var box = $("chips");
+    box.innerHTML = "";
+    list.forEach(function (text) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.textContent = text;
+      b.addEventListener("click", function () {
+        hitokoto.value = text;
+        hitokoto.focus();
+        var i = text.indexOf("〇〇");
+        if (i >= 0) hitokoto.setSelectionRange(i, i + 2);
+        update();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function refreshMeta() {
+    $("count").textContent = msg.value.length + "文字";
+    $("placeholder-warn").hidden = msg.value.indexOf("〇〇") < 0;
+    $("store-warn").hidden = !!store.value;
+    $("store-bar").classList.toggle("missing", !store.value);
+    var tag = $("state-tag");
+    tag.textContent = state.edited ? "手直し中" : "たたき台";
+    tag.classList.toggle("edited", state.edited);
+  }
+
+  function update() {
+    var built = build();
+    if (!state.edited) {
+      msg.value = built;
+      $("stale").hidden = true;
+    } else {
+      $("stale").hidden = built === state.lastBuilt;
+    }
+    if (!state.edited) state.lastBuilt = built;
+    refreshMeta();
+  }
+
+  function rebuild() {
+    state.edited = false;
+    update();
+  }
+
+  function bindSeg(groupId, key) {
+    var buttons = $(groupId).querySelectorAll("button");
+    buttons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state[key] = btn.dataset.value;
+        buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b === btn)); });
+        if (key === "result") renderChips();
+        if (key === "mode" || key === "reply") applyMode();
+        update();
+      });
+    });
+  }
+  function select(groupId, value) {
+    $(groupId).querySelectorAll("button").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.value === value));
+    });
+  }
+
+  bindSeg("seg-mode", "mode");
+  bindSeg("seg-reply", "reply");
+  bindSeg("seg-result", "result");
+  bindSeg("seg-visit", "visit");
+  [customer, hitokoto, staff].forEach(function (el) { el.addEventListener("input", update); });
+  $("reply-sig").addEventListener("change", update);
+  store.addEventListener("change", function () {
+    storeDate = store.value ? today() : null;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ store: store.value, date: storeDate })); } catch (e) {}
+    update();
+  });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkDay(); });
+  msg.addEventListener("input", function () {
+    if (!state.edited) { state.edited = true; }
+    refreshMeta();
+  });
+  $("rebuild").addEventListener("click", rebuild);
+
+  var toastTimer;
+  function toast(text) {
+    var t = $("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
+
+  $("copy").addEventListener("click", function () {
+    checkDay();
+    if (!store.value) {
+      store.focus();
+      toast("本日の店舗を選んでからコピーしてください");
+      return;
+    }
+    var text = msg.value;
+    var fallback = function () {
+      msg.focus(); msg.select();
+      toast("文面を選択しました。長押しして「コピー」を選んでください");
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast("コピーしました。LINEに貼り付けて送信してください");
+      }, fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  $("next").addEventListener("click", function () {
+    customer.value = ""; hitokoto.value = ""; staff.value = "";
+    state.result = "seiritsu"; state.visit = "1"; state.reply = "thanks";
+    select("seg-result", "seiritsu"); select("seg-visit", "1"); select("seg-reply", "thanks");
+    $("reply-sig").checked = false;
+    applyMode();
+    renderChips();
+    rebuild();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast("入力をクリアしました");
+  });
+
+  renderChips();
+  applyMode();
+  update();
+})();
+</script>
+</body>
+</html>
