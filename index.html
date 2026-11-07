@@ -120,7 +120,7 @@
 
   .seg.seg-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mode {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
     border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden;
   }
   .mode button {
@@ -153,6 +153,15 @@
   }
   .store-bar.missing { background: var(--warn-soft); }
   .store-bar.missing label { color: var(--warn); }
+
+  .date-row { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--ink); }
+  .date-row select {
+    font: inherit; min-height: 44px; padding: 8px 10px;
+    border: 1.5px solid var(--line); border-radius: 8px;
+    background: var(--surface); color: var(--ink);
+  }
+  .expiry { margin: 8px 0 0; font-size: 15px; font-weight: 700; color: var(--accent); }
+  .expiry.bad { color: var(--warn); }
 
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
@@ -221,6 +230,7 @@
   @media (max-width: 420px) {
     .fields { grid-template-columns: 1fr; }
     .seg button b { font-size: 15px; }
+    .mode button { font-size: 13px; padding: 0 2px; white-space: nowrap; letter-spacing: -0.02em; }
   }
 </style>
 
@@ -244,6 +254,7 @@
       <div class="mode" id="seg-mode" role="group" aria-label="作る文面">
         <button type="button" id="m-thanks" data-value="thanks" aria-pressed="true">お礼を送る</button>
         <button type="button" id="m-reply" data-value="reply" aria-pressed="false">返信が来たとき</button>
+        <button type="button" id="m-ticket" data-value="ticket" aria-pressed="false">リピチケ訴求</button>
       </div>
 
       <div class="step reply-only" hidden>
@@ -305,8 +316,17 @@
         </div>
       </div>
 
-      <div class="step thanks-only">
-        <div class="step-head"><span class="step-no">4</span>その方だけの一言 <small>接客中の話題を1文だけ</small></div>
+      <div class="step ticket-only" hidden>
+        <div class="step-head"><span class="step-no">2</span>買取日 <small>有効期限は14日後で自動計算</small></div>
+        <div class="date-row">
+          <select id="buy-month" aria-label="買取日の月"></select>月
+          <select id="buy-day" aria-label="買取日の日"></select>日
+        </div>
+        <p class="expiry" id="expiry"></p>
+      </div>
+
+      <div class="step thanks-ticket">
+        <div class="step-head"><span class="step-no" id="hitokoto-step-no">4</span>その方だけの一言 <small>接客中の話題を1文だけ</small></div>
         <textarea id="hitokoto" placeholder="例：お話されていた北海道旅行、楽しんできてくださいね！"></textarea>
         <div class="chips" id="chips"></div>
         <p class="hint">候補をタップすると入力欄に入ります。「〇〇」の部分だけ書き換えてください。</p>
@@ -333,6 +353,10 @@
 
         <div class="notice" id="store-warn" hidden>
           <span>本日の店舗が選ばれていません。画面上の「本日の店舗」から選んでください。</span>
+        </div>
+
+        <div class="notice" id="date-warn" hidden>
+          <span>買取日がありえない日付です（例：2月30日）。月と日を選び直してください。</span>
         </div>
 
         <div class="notice" id="placeholder-warn" hidden>
@@ -404,6 +428,13 @@
     thanks: "ご返信ありがとうございます！\nまたお会いできるのを楽しみにしております😊",
     consult: "ご連絡ありがとうございます！\n詳しくお伺いしたいので、お手数ですが下記までお電話いただけますでしょうか。\nお電話の際に「LINEを見た」とお伝えいただけるとスムーズです😊"
   };
+  // リピチケ訴求：{expiry} は有効期限（買取日の14日後）に置き換わります。一言は opening と ticket の間に入ります
+  var TICKET_DAYS = 14;
+  var TICKET = {
+    opening: "先日はご来店いただき誠にありがとうございました。\n\nまた大切なお品物をお任せいただき、ありがとうございました。",
+    ticket: "ご来店時にお渡ししたリピーター様限定チケットの適用期限が{expiry}までとなっております。\nお得なチケットですので、この機会に是非ご利用くださいませ。",
+    closing: "他にも気になるお品物がございましたら、「これって売れるのかな？」くらいでも大丈夫ですので、お気軽にお持ちください！\nまたお会いできるのを楽しみにしております！"
+  };
   var CHIPS_COMMON = [
     "〇〇のお話、とても楽しかったです！",
     "お話されていた〇〇、楽しんできてくださいね！",
@@ -455,6 +486,36 @@
       store.value = saved.store; storeDate = saved.date;
     }
   } catch (e) {}
+  // 買取日（月・日の選択式）。初期値は今日
+  var buyMonth = $("buy-month"), buyDay = $("buy-day");
+  for (var i = 1; i <= 12; i++) buyMonth.add(new Option(String(i), String(i)));
+  for (var j = 1; j <= 31; j++) buyDay.add(new Option(String(j), String(j)));
+  function resetBuyDate() {
+    var d = new Date();
+    buyMonth.value = String(d.getMonth() + 1);
+    buyDay.value = String(d.getDate());
+  }
+  resetBuyDate();
+  var WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+  function fmtDate(d) { return (d.getMonth() + 1) + "月" + d.getDate() + "日（" + WEEK[d.getDay()] + "）"; }
+  // 買取日は過去〜今日のはずなので、今日より先の月日なら前の年とみなす（1月に12月分を作る場合など）
+  function buyDate() {
+    var m = Number(buyMonth.value), dd = Number(buyDay.value);
+    var now = new Date();
+    var y = now.getFullYear();
+    var d = new Date(y, m - 1, dd);
+    if (d.getMonth() !== m - 1) return null; // 2月30日など存在しない日付
+    var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (d > todayStart) d = new Date(y - 1, m - 1, dd);
+    if (d.getMonth() !== m - 1) return null; // 前年がうるう年でない2月29日
+    return d;
+  }
+  function expiryDate() {
+    var d = buyDate();
+    if (!d) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + TICKET_DAYS);
+  }
+
   function checkDay() {
     if (storeDate && storeDate !== today()) {
       store.value = ""; storeDate = null;
@@ -474,6 +535,16 @@
     var parts = [];
     var name = customer.value.trim();
     if (name) parts.push(name.replace(/(様|さん)$/, "") + "様");
+    if (state.mode === "ticket") {
+      var ex = expiryDate();
+      parts.push(TICKET.opening);
+      var th = hitokoto.value.trim();
+      if (th) parts.push(th);
+      parts.push(TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日"));
+      parts.push(TICKET.closing);
+      parts.push(signature());
+      return parts.join("\n\n");
+    }
     if (state.mode === "reply") {
       parts.push(REPLY[state.reply]);
       if (state.reply === "consult" || $("reply-sig").checked) parts.push(signature());
@@ -491,15 +562,19 @@
 
   function applyMode() {
     var isReply = state.mode === "reply";
-    document.querySelectorAll(".thanks-only").forEach(function (el) { el.hidden = isReply; });
+    document.querySelectorAll(".thanks-only").forEach(function (el) { el.hidden = state.mode !== "thanks"; });
     document.querySelectorAll(".reply-only").forEach(function (el) { el.hidden = !isReply; });
-    $("name-step-no").textContent = isReply ? "2" : "3";
+    document.querySelectorAll(".ticket-only").forEach(function (el) { el.hidden = state.mode !== "ticket"; });
+    document.querySelectorAll(".thanks-ticket").forEach(function (el) { el.hidden = isReply; });
+    $("hitokoto-step-no").textContent = state.mode === "ticket" ? "3" : "4";
+    $("name-step-no").textContent = { thanks: "3", reply: "2", ticket: "1" }[state.mode];
     // 「相談・質問」は必ず署名付きなので、チェック欄は「お礼・あいさつ」のときだけ出す
     $("reply-sig-row").hidden = state.reply !== "thanks";
   }
 
   function renderChips() {
-    var list = CHIPS_BY_RESULT[state.result].concat(CHIPS_COMMON, [seasonalChip()]);
+    // リピチケ訴求はお品物をお任せいただいた前提なので「成立」の候補を出す
+    var list = CHIPS_BY_RESULT[state.mode === "ticket" ? "seiritsu" : state.result].concat(CHIPS_COMMON, [seasonalChip()]);
     var box = $("chips");
     box.innerHTML = "";
     list.forEach(function (text) {
@@ -520,6 +595,10 @@
     $("count").textContent = msg.value.length + "文字";
     $("placeholder-warn").hidden = msg.value.indexOf("〇〇") < 0;
     $("store-warn").hidden = !!store.value;
+    var ex = expiryDate(), badDate = state.mode === "ticket" && !ex;
+    $("date-warn").hidden = !badDate;
+    $("expiry").textContent = ex ? "有効期限：" + fmtDate(ex) + "まで" : "有効期限：計算できません（日付を確認）";
+    $("expiry").classList.toggle("bad", !ex);
     $("store-bar").classList.toggle("missing", !store.value);
     var tag = $("state-tag");
     tag.textContent = state.edited ? "手直し中" : "たたき台";
@@ -549,7 +628,7 @@
       btn.addEventListener("click", function () {
         state[key] = btn.dataset.value;
         buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b === btn)); });
-        if (key === "result") renderChips();
+        if (key === "result" || key === "mode") renderChips();
         if (key === "mode" || key === "reply") applyMode();
         update();
       });
@@ -567,6 +646,7 @@
   bindSeg("seg-visit", "visit");
   [customer, hitokoto, staff].forEach(function (el) { el.addEventListener("input", update); });
   $("reply-sig").addEventListener("change", update);
+  [buyMonth, buyDay].forEach(function (el) { el.addEventListener("change", update); });
   store.addEventListener("change", function () {
     storeDate = store.value ? today() : null;
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ store: store.value, date: storeDate })); } catch (e) {}
@@ -595,6 +675,11 @@
       toast("本日の店舗を選んでからコピーしてください");
       return;
     }
+    if (state.mode === "ticket" && !expiryDate()) {
+      buyDay.focus();
+      toast("買取日を正しい日付に直してからコピーしてください");
+      return;
+    }
     var text = msg.value;
     var fallback = function () {
       msg.focus(); msg.select();
@@ -614,6 +699,7 @@
     state.result = "seiritsu"; state.visit = "1"; state.reply = "thanks";
     select("seg-result", "seiritsu"); select("seg-visit", "1"); select("seg-reply", "thanks");
     $("reply-sig").checked = false;
+    resetBuyDate();
     applyMode();
     renderChips();
     rebuild();
