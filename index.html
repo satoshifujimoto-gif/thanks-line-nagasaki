@@ -454,7 +454,7 @@
   var TICKET = {
     opening: "先日はご来店いただき誠にありがとうございました。\n\nまた大切なお品物をお任せいただき、ありがとうございました。",
     ticket: "ご来店時にお渡ししたリピーター様限定チケットの適用期限が{expiry}までとなっております。\nお得なチケットですので、この機会に是非ご利用くださいませ。",
-    // 出勤日を選んだときだけ ticket の次の行に入ります。{days} は「11月11日（水）・11月13日（金）」の形
+    // 出勤日を選んだときだけ ticket の後に1行空けて入ります。{days} は「11月11日（水）・11月13日（金）」の形
     work: "私の出勤日は{days}です。お待ちしております！",
     closing: "他にも気になるお品物がございましたら、「これって売れるのかな？」くらいでも大丈夫ですので、お気軽にお持ちください！\nまたお会いできるのを楽しみにしております！"
   };
@@ -624,7 +624,7 @@
       if (th) parts.push(th);
       var tk = TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日");
       var days = selectedWorkDays();
-      if (days.length) tk += "\n" + TICKET.work.replace("{days}", days.map(fmtDate).join("・"));
+      if (days.length) tk += "\n\n" + TICKET.work.replace("{days}", days.map(fmtDate).join("・"));
       parts.push(tk);
       parts.push(TICKET.closing);
       parts.push(signature());
