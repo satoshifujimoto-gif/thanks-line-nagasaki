@@ -163,6 +163,21 @@
   .expiry { margin: 8px 0 0; font-size: 15px; font-weight: 700; color: var(--accent); }
   .expiry.bad { color: var(--warn); }
 
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal .wd { text-align: center; font-size: 12px; color: var(--muted); padding: 2px 0; }
+  .cal .wd.sun { color: #C0392B; } .cal .wd.sat { color: #2C6FB7; }
+  .cal button {
+    font: inherit; font-size: 15px; min-height: 44px; padding: 2px 0; cursor: pointer;
+    border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink);
+    display: grid; place-items: center; line-height: 1.1;
+  }
+  .cal button small { font-size: 10px; color: var(--muted); }
+  .cal button:disabled { cursor: default; opacity: .35; border-style: dashed; }
+  .cal button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .cal button[aria-pressed="true"] small { color: var(--on-accent); }
+  .cal-note { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+  .cal-note.bad { color: var(--warn); font-weight: 700; }
+
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
   input[type="text"], textarea {
@@ -325,6 +340,12 @@
         <p class="expiry" id="expiry"></p>
       </div>
 
+      <div class="step ticket-only" hidden>
+        <div class="step-head"><span class="step-no">3</span>出勤日 <small>タップで複数選べます（今日〜期限日）</small></div>
+        <div class="cal" id="cal" role="group" aria-label="出勤日"></div>
+        <p class="cal-note" id="cal-note"></p>
+      </div>
+
       <div class="step thanks-ticket">
         <div class="step-head"><span class="step-no" id="hitokoto-step-no">4</span>その方だけの一言 <small>接客中の話題を1文だけ</small></div>
         <textarea id="hitokoto" placeholder="例：お話されていた北海道旅行、楽しんできてくださいね！"></textarea>
@@ -433,6 +454,8 @@
   var TICKET = {
     opening: "先日はご来店いただき誠にありがとうございました。\n\nまた大切なお品物をお任せいただき、ありがとうございました。",
     ticket: "ご来店時にお渡ししたリピーター様限定チケットの適用期限が{expiry}までとなっております。\nお得なチケットですので、この機会に是非ご利用くださいませ。",
+    // 出勤日を選んだときだけ ticket の次の行に入ります。{days} は「11月11日（水）・11月13日（金）」の形
+    work: "私の出勤日は{days}です。お待ちしております！",
     closing: "他にも気になるお品物がございましたら、「これって売れるのかな？」くらいでも大丈夫ですので、お気軽にお持ちください！\nまたお会いできるのを楽しみにしております！"
   };
   var CHIPS_COMMON = [
@@ -516,6 +539,65 @@
     return new Date(d.getFullYear(), d.getMonth(), d.getDate() + TICKET_DAYS);
   }
 
+  // 出勤日カレンダー：今日〜有効期限の日だけ選べる。選択は "y-m-d" のキーで持つ
+  var workDays = {};
+  function dayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function calRange() {
+    var now = new Date(), ex = expiryDate();
+    var start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (!ex || ex < start) return null;
+    return { start: start, end: ex };
+  }
+  function selectedWorkDays() {
+    var r = calRange();
+    if (!r) return [];
+    var list = [];
+    for (var d = new Date(r.start); d <= r.end; d.setDate(d.getDate() + 1)) {
+      if (workDays[dayKey(d)]) list.push(new Date(d));
+    }
+    return list;
+  }
+  function renderCal() {
+    var box = $("cal"), note = $("cal-note"), r = calRange();
+    box.innerHTML = "";
+    note.classList.remove("bad");
+    if (!r) {
+      note.textContent = expiryDate() ? "有効期限が過ぎているため、出勤日は選べません。買取日を確認してください。" : "買取日を正しく選ぶと、カレンダーが出ます。";
+      note.classList.add("bad");
+      return;
+    }
+    // 範囲外の選択は消さずに残す（月→日の順に選び直す途中で消えないように）。文面には範囲内の日だけ入る
+    WEEK.forEach(function (w, i) {
+      var h = document.createElement("div");
+      h.className = "wd" + (i === 0 ? " sun" : i === 6 ? " sat" : "");
+      h.textContent = w;
+      box.appendChild(h);
+    });
+    var first = new Date(r.start); first.setDate(first.getDate() - first.getDay());
+    var last = new Date(r.end); last.setDate(last.getDate() + (6 - last.getDay()));
+    for (var d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+      var b = document.createElement("button");
+      b.type = "button";
+      var inRange = d >= r.start && d <= r.end, key = dayKey(d);
+      var showMonth = d.getDate() === 1 || d.getTime() === r.start.getTime();
+      b.innerHTML = (showMonth ? "<small>" + (d.getMonth() + 1) + "月</small>" : "") + d.getDate();
+      b.setAttribute("aria-label", fmtDate(d));
+      b.disabled = !inRange;
+      b.setAttribute("aria-pressed", String(!!workDays[key]));
+      if (inRange) {
+        b.addEventListener("click", (function (k, btn) {
+          return function () {
+            if (workDays[k]) delete workDays[k]; else workDays[k] = true;
+            btn.setAttribute("aria-pressed", String(!!workDays[k]));
+            update();
+          };
+        })(key, b));
+      }
+      box.appendChild(b);
+    }
+    note.textContent = "選べるのは " + fmtDate(r.start) + " 〜 " + fmtDate(r.end) + "。選ばなければ文面に出勤日は入りません。";
+  }
+
   function checkDay() {
     if (storeDate && storeDate !== today()) {
       store.value = ""; storeDate = null;
@@ -540,7 +622,10 @@
       parts.push(TICKET.opening);
       var th = hitokoto.value.trim();
       if (th) parts.push(th);
-      parts.push(TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日"));
+      var tk = TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日");
+      var days = selectedWorkDays();
+      if (days.length) tk += "\n" + TICKET.work.replace("{days}", days.map(fmtDate).join("・"));
+      parts.push(tk);
       parts.push(TICKET.closing);
       parts.push(signature());
       return parts.join("\n\n");
@@ -566,7 +651,7 @@
     document.querySelectorAll(".reply-only").forEach(function (el) { el.hidden = !isReply; });
     document.querySelectorAll(".ticket-only").forEach(function (el) { el.hidden = state.mode !== "ticket"; });
     document.querySelectorAll(".thanks-ticket").forEach(function (el) { el.hidden = isReply; });
-    $("hitokoto-step-no").textContent = state.mode === "ticket" ? "3" : "4";
+    $("hitokoto-step-no").textContent = "4";
     $("name-step-no").textContent = { thanks: "3", reply: "2", ticket: "1" }[state.mode];
     // 「相談・質問」は必ず署名付きなので、チェック欄は「お礼・あいさつ」のときだけ出す
     $("reply-sig-row").hidden = state.reply !== "thanks";
@@ -646,7 +731,7 @@
   bindSeg("seg-visit", "visit");
   [customer, hitokoto, staff].forEach(function (el) { el.addEventListener("input", update); });
   $("reply-sig").addEventListener("change", update);
-  [buyMonth, buyDay].forEach(function (el) { el.addEventListener("change", update); });
+  [buyMonth, buyDay].forEach(function (el) { el.addEventListener("change", function () { renderCal(); update(); }); });
   store.addEventListener("change", function () {
     storeDate = store.value ? today() : null;
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ store: store.value, date: storeDate })); } catch (e) {}
@@ -700,6 +785,8 @@
     select("seg-result", "seiritsu"); select("seg-visit", "1"); select("seg-reply", "thanks");
     $("reply-sig").checked = false;
     resetBuyDate();
+    workDays = {};
+    renderCal();
     applyMode();
     renderChips();
     rebuild();
@@ -708,6 +795,7 @@
   });
 
   renderChips();
+  renderCal();
   applyMode();
   update();
 })();
