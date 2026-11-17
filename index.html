@@ -331,8 +331,8 @@
         </div>
       </div>
 
-      <div class="step ticket-only" hidden>
-        <div class="step-head"><span class="step-no">2</span>買取日 <small>有効期限は14日後で自動計算</small></div>
+      <div class="step ticket-info" hidden>
+        <div class="step-head"><span class="step-no" id="buy-step-no">2</span>買取日 <small>有効期限は14日後で自動計算</small></div>
         <div class="date-row">
           <select id="buy-month" aria-label="買取日の月"></select>月
           <select id="buy-day" aria-label="買取日の日"></select>日
@@ -340,8 +340,8 @@
         <p class="expiry" id="expiry"></p>
       </div>
 
-      <div class="step ticket-only" hidden>
-        <div class="step-head"><span class="step-no">3</span>出勤日 <small>タップで複数選べます（今日〜期限日）</small></div>
+      <div class="step ticket-info" hidden>
+        <div class="step-head"><span class="step-no" id="work-step-no">3</span>出勤日 <small>タップで複数選べます（今日〜期限日）</small></div>
         <div class="cal" id="cal" role="group" aria-label="出勤日"></div>
         <p class="cal-note" id="cal-note"></p>
       </div>
@@ -451,11 +451,13 @@
   };
   // リピチケ訴求：{expiry} は有効期限（買取日の14日後）に置き換わります。一言は opening と ticket の間に入ります
   var TICKET_DAYS = 14;
+  // 「お礼を送る」でもチケット案内を入れる結果（不成立は入れない）
+  var TICKET_RESULTS = ["seiritsu", "toiawase"];
   var TICKET = {
     opening: "先日はご来店いただき誠にありがとうございました。\n\nまた大切なお品物をお任せいただき、ありがとうございました。",
     ticket: "ご来店時にお渡ししたリピーター様限定チケットの適用期限が{expiry}までとなっております。\nお得なチケットですので、この機会に是非ご利用くださいませ。",
     // 出勤日を選んだときだけ ticket の後に1行空けて入ります。{days} は「11月11日（水）・11月13日（金）」の形
-    work: "私の出勤日は{days}です。お待ちしております！",
+    work: "私の出勤日は{days}です。\nお待ちしております！",
     closing: "他にも気になるお品物がございましたら、「これって売れるのかな？」くらいでも大丈夫ですので、お気軽にお持ちください！\nまたお会いできるのを楽しみにしております！"
   };
   var CHIPS_COMMON = [
@@ -618,14 +620,10 @@
     var name = customer.value.trim();
     if (name) parts.push(name.replace(/(様|さん)$/, "") + "様");
     if (state.mode === "ticket") {
-      var ex = expiryDate();
       parts.push(TICKET.opening);
       var th = hitokoto.value.trim();
       if (th) parts.push(th);
-      var tk = TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日");
-      var days = selectedWorkDays();
-      if (days.length) tk += "\n\n" + TICKET.work.replace("{days}", days.map(fmtDate).join("・"));
-      parts.push(tk);
+      parts.push(ticketBlock());
       parts.push(TICKET.closing);
       parts.push(signature());
       return parts.join("\n\n");
@@ -640,18 +638,36 @@
     parts.push(RESULT[state.result]);
     var h = hitokoto.value.trim();
     if (h) parts.push(h);
+    if (showTicketInfo()) parts.push(ticketBlock());
     parts.push(CLOSING[state.visit]);
     parts.push(signature());
     return parts.join("\n\n");
   }
 
+  // チケット案内（有効期限＋出勤日）。リピチケ訴求と、お礼を送る（成立・問い合わせ）で使う
+  function showTicketInfo() {
+    return state.mode === "ticket" || (state.mode === "thanks" && TICKET_RESULTS.indexOf(state.result) >= 0);
+  }
+  function ticketBlock() {
+    var ex = expiryDate();
+    var tk = TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日");
+    var days = selectedWorkDays();
+    if (days.length) tk += "\n\n" + TICKET.work.replace("{days}", days.map(fmtDate).join("・"));
+    return tk;
+  }
+
   function applyMode() {
     var isReply = state.mode === "reply";
+    var info = showTicketInfo();
     document.querySelectorAll(".thanks-only").forEach(function (el) { el.hidden = state.mode !== "thanks"; });
     document.querySelectorAll(".reply-only").forEach(function (el) { el.hidden = !isReply; });
-    document.querySelectorAll(".ticket-only").forEach(function (el) { el.hidden = state.mode !== "ticket"; });
+    document.querySelectorAll(".ticket-info").forEach(function (el) { el.hidden = !info; });
     document.querySelectorAll(".thanks-ticket").forEach(function (el) { el.hidden = isReply; });
-    $("hitokoto-step-no").textContent = "4";
+    // 番号：リピチケ訴求は 2買取日 3出勤日 4一言、お礼は 4買取日 5出勤日 6一言（不成立は 4一言）
+    var base = state.mode === "ticket" ? 2 : 4;
+    $("buy-step-no").textContent = String(base);
+    $("work-step-no").textContent = String(base + 1);
+    $("hitokoto-step-no").textContent = String(info ? base + 2 : 4);
     $("name-step-no").textContent = { thanks: "3", reply: "2", ticket: "1" }[state.mode];
     // 「相談・質問」は必ず署名付きなので、チェック欄は「お礼・あいさつ」のときだけ出す
     $("reply-sig-row").hidden = state.reply !== "thanks";
@@ -680,7 +696,7 @@
     $("count").textContent = msg.value.length + "文字";
     $("placeholder-warn").hidden = msg.value.indexOf("〇〇") < 0;
     $("store-warn").hidden = !!store.value;
-    var ex = expiryDate(), badDate = state.mode === "ticket" && !ex;
+    var ex = expiryDate(), badDate = showTicketInfo() && !ex;
     $("date-warn").hidden = !badDate;
     $("expiry").textContent = ex ? "有効期限：" + fmtDate(ex) + "まで" : "有効期限：計算できません（日付を確認）";
     $("expiry").classList.toggle("bad", !ex);
@@ -714,7 +730,7 @@
         state[key] = btn.dataset.value;
         buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b === btn)); });
         if (key === "result" || key === "mode") renderChips();
-        if (key === "mode" || key === "reply") applyMode();
+        if (key === "mode" || key === "reply" || key === "result") applyMode();
         update();
       });
     });
@@ -760,7 +776,7 @@
       toast("本日の店舗を選んでからコピーしてください");
       return;
     }
-    if (state.mode === "ticket" && !expiryDate()) {
+    if (showTicketInfo() && !expiryDate()) {
       buyDay.focus();
       toast("買取日を正しい日付に直してからコピーしてください");
       return;
