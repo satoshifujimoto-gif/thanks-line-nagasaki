@@ -131,6 +131,8 @@
   .mode button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
   .check { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); cursor: pointer; }
   .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+  .skip-box { background: var(--bg); border-radius: 10px; padding: 12px 14px; flex-wrap: wrap; }
+  .skip-box small { font-size: 12px; color: var(--muted); }
   .guide {
     display: grid; gap: 10px; font-size: 13px; line-height: 1.6;
     background: var(--bg); border-radius: 10px; padding: 12px 14px;
@@ -330,6 +332,10 @@
           </label>
         </div>
       </div>
+
+      <label class="check skip-box" for="ticket-skip" id="ticket-skip-row" hidden>
+        <input type="checkbox" id="ticket-skip"> チケットを渡していない<small>（有効期限・出勤日を入れない）</small>
+      </label>
 
       <div class="step ticket-info" hidden>
         <div class="step-head"><span class="step-no" id="buy-step-no">2</span>買取日 <small>有効期限は14日後で自動計算</small></div>
@@ -645,8 +651,12 @@
   }
 
   // チケット案内（有効期限＋出勤日）。リピチケ訴求と、お礼を送る（成立・問い合わせ）で使う
+  // お礼で案内を入れられる結果か（チェック欄を出すかどうか）
+  function ticketEligible() {
+    return state.mode === "thanks" && TICKET_RESULTS.indexOf(state.result) >= 0;
+  }
   function showTicketInfo() {
-    return state.mode === "ticket" || (state.mode === "thanks" && TICKET_RESULTS.indexOf(state.result) >= 0);
+    return state.mode === "ticket" || (ticketEligible() && !$("ticket-skip").checked);
   }
   function ticketBlock() {
     var ex = expiryDate();
@@ -662,6 +672,7 @@
     document.querySelectorAll(".thanks-only").forEach(function (el) { el.hidden = state.mode !== "thanks"; });
     document.querySelectorAll(".reply-only").forEach(function (el) { el.hidden = !isReply; });
     document.querySelectorAll(".ticket-info").forEach(function (el) { el.hidden = !info; });
+    $("ticket-skip-row").hidden = !ticketEligible();
     document.querySelectorAll(".thanks-ticket").forEach(function (el) { el.hidden = isReply; });
     // 番号：リピチケ訴求は 2買取日 3出勤日 4一言、お礼は 4買取日 5出勤日 6一言（不成立は 4一言）
     var base = state.mode === "ticket" ? 2 : 4;
@@ -747,6 +758,7 @@
   bindSeg("seg-visit", "visit");
   [customer, hitokoto, staff].forEach(function (el) { el.addEventListener("input", update); });
   $("reply-sig").addEventListener("change", update);
+  $("ticket-skip").addEventListener("change", function () { applyMode(); update(); });
   [buyMonth, buyDay].forEach(function (el) { el.addEventListener("change", function () { renderCal(); update(); }); });
   store.addEventListener("change", function () {
     storeDate = store.value ? today() : null;
@@ -800,6 +812,7 @@
     state.result = "seiritsu"; state.visit = "1"; state.reply = "thanks";
     select("seg-result", "seiritsu"); select("seg-visit", "1"); select("seg-reply", "thanks");
     $("reply-sig").checked = false;
+    $("ticket-skip").checked = false;
     resetBuyDate();
     workDays = {};
     renderCal();
