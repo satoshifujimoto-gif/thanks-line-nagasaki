@@ -334,7 +334,7 @@
       </div>
 
       <label class="check skip-box" for="ticket-skip" id="ticket-skip-row" hidden>
-        <input type="checkbox" id="ticket-skip"> チケットを渡していない<small>（有効期限・出勤日を入れない）</small>
+        <input type="checkbox" id="ticket-skip"> チケットを渡していない<small>（有効期限を入れない。出勤日は入れられます）</small>
       </label>
 
       <div class="step ticket-info" hidden>
@@ -346,8 +346,8 @@
         <p class="expiry" id="expiry"></p>
       </div>
 
-      <div class="step ticket-info" hidden>
-        <div class="step-head"><span class="step-no" id="work-step-no">3</span>出勤日 <small>タップで複数選べます（今日〜期限日）</small></div>
+      <div class="step work-info" hidden>
+        <div class="step-head"><span class="step-no" id="work-step-no">3</span>出勤日 <small>タップで複数選べます</small></div>
         <div class="cal" id="cal" role="group" aria-label="出勤日"></div>
         <p class="cal-note" id="cal-note"></p>
       </div>
@@ -548,11 +548,13 @@
   }
 
   // 出勤日カレンダー：今日〜有効期限の日だけ選べる。選択は "y-m-d" のキーで持つ
+  // 「チケットを渡していない」のときは買取日を使わず、今日〜今日＋TICKET_DAYS 日を選べる
   var workDays = {};
   function dayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
   function calRange() {
-    var now = new Date(), ex = expiryDate();
+    var now = new Date();
     var start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var ex = ticketSkipped() ? new Date(start.getFullYear(), start.getMonth(), start.getDate() + TICKET_DAYS) : expiryDate();
     if (!ex || ex < start) return null;
     return { start: start, end: ex };
   }
@@ -645,6 +647,7 @@
     var h = hitokoto.value.trim();
     if (h) parts.push(h);
     if (showTicketInfo()) parts.push(ticketBlock());
+    else if (showWork() && workLine()) parts.push(workLine());
     parts.push(CLOSING[state.visit]);
     parts.push(signature());
     return parts.join("\n\n");
@@ -655,14 +658,27 @@
   function ticketEligible() {
     return state.mode === "thanks" && TICKET_RESULTS.indexOf(state.result) >= 0;
   }
+  // 「チケットを渡していない」：有効期限（買取日）だけ外し、出勤日は残す
+  function ticketSkipped() {
+    return ticketEligible() && $("ticket-skip").checked;
+  }
+  // 有効期限の案内（と買取日の項目）を出すか
   function showTicketInfo() {
-    return state.mode === "ticket" || (ticketEligible() && !$("ticket-skip").checked);
+    return state.mode === "ticket" || (ticketEligible() && !ticketSkipped());
+  }
+  // 出勤日の項目を出すか
+  function showWork() {
+    return state.mode === "ticket" || ticketEligible();
+  }
+  function workLine() {
+    var days = selectedWorkDays();
+    return days.length ? TICKET.work.replace("{days}", days.map(fmtDate).join("・")) : "";
   }
   function ticketBlock() {
     var ex = expiryDate();
     var tk = TICKET.ticket.replace("{expiry}", ex ? (ex.getMonth() + 1) + "月" + ex.getDate() + "日" : "〇月〇日");
-    var days = selectedWorkDays();
-    if (days.length) tk += "\n\n" + TICKET.work.replace("{days}", days.map(fmtDate).join("・"));
+    var wl = workLine();
+    if (wl) tk += "\n\n" + wl;
     return tk;
   }
 
@@ -671,14 +687,19 @@
     var info = showTicketInfo();
     document.querySelectorAll(".thanks-only").forEach(function (el) { el.hidden = state.mode !== "thanks"; });
     document.querySelectorAll(".reply-only").forEach(function (el) { el.hidden = !isReply; });
+    var work = showWork();
     document.querySelectorAll(".ticket-info").forEach(function (el) { el.hidden = !info; });
+    document.querySelectorAll(".work-info").forEach(function (el) { el.hidden = !work; });
     $("ticket-skip-row").hidden = !ticketEligible();
     document.querySelectorAll(".thanks-ticket").forEach(function (el) { el.hidden = isReply; });
-    // 番号：リピチケ訴求は 2買取日 3出勤日 4一言、お礼は 4買取日 5出勤日 6一言（不成立は 4一言）
-    var base = state.mode === "ticket" ? 2 : 4;
-    $("buy-step-no").textContent = String(base);
-    $("work-step-no").textContent = String(base + 1);
-    $("hitokoto-step-no").textContent = String(info ? base + 2 : 4);
+    // 番号：リピチケ訴求は 2買取日 3出勤日 4一言、お礼は 4買取日 5出勤日 6一言
+    // （チケットを渡していない：4出勤日 5一言、不成立：4一言）
+    var n = state.mode === "ticket" ? 2 : 4;
+    $("buy-step-no").textContent = String(n);
+    if (info) n++;
+    $("work-step-no").textContent = String(n);
+    if (work) n++;
+    $("hitokoto-step-no").textContent = String(n);
     $("name-step-no").textContent = { thanks: "3", reply: "2", ticket: "1" }[state.mode];
     // 「相談・質問」は必ず署名付きなので、チェック欄は「お礼・あいさつ」のときだけ出す
     $("reply-sig-row").hidden = state.reply !== "thanks";
@@ -758,7 +779,7 @@
   bindSeg("seg-visit", "visit");
   [customer, hitokoto, staff].forEach(function (el) { el.addEventListener("input", update); });
   $("reply-sig").addEventListener("change", update);
-  $("ticket-skip").addEventListener("change", function () { applyMode(); update(); });
+  $("ticket-skip").addEventListener("change", function () { renderCal(); applyMode(); update(); });
   [buyMonth, buyDay].forEach(function (el) { el.addEventListener("change", function () { renderCal(); update(); }); });
   store.addEventListener("change", function () {
     storeDate = store.value ? today() : null;
