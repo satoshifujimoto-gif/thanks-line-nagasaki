@@ -432,11 +432,11 @@
       plain: "本日はご来店いただき、ありがとうございました😊"
     },
     2: {
-      withStaff: "本日もご来店いただき、ありがとうございました！\nまたお越しいただけて、とても嬉しかったです😊\n担当の{staff}です。",
+      withStaff: "本日もご来店いただき、ありがとうございました！\n担当させていただいた{staff}です😊\nまたお越しいただけて、とても嬉しかったです！",
       plain: "本日もご来店いただき、ありがとうございました！\nまたお越しいただけて、とても嬉しかったです😊"
     },
     3: {
-      withStaff: "いつもご利用いただき、ありがとうございます！\n今回も担当させていただき、ありがとうございました😊\n{staff}です。",
+      withStaff: "いつもご利用いただき、ありがとうございます！\n担当させていただいた{staff}です😊\n今回もご来店いただき、ありがとうございました！",
       plain: "いつもご利用いただき、ありがとうございます！\n今回もご来店いただき、ありがとうございました😊"
     }
   };
@@ -450,6 +450,8 @@
     2: "また何かございましたら、査定だけでも大丈夫ですので、いつでもお気軽にお立ち寄りください！\nまたお会いできるのを楽しみにしております！",
     3: "「これってどうなんだろう？」というお品物も、いつでもお気軽にお持ちください。\n今後ともよろしくお願いいたします！"
   };
+  // 担当者名を入れたとき、返信・リピチケ訴求の最初の行の次（2行目）に入る行
+  var STAFF_LINE = "担当させていただいた{staff}です😊";
   // お客様から返信が来たとき
   var REPLY = {
     thanks: "ご返信ありがとうございます！\nまたお会いできるのを楽しみにしております😊",
@@ -622,13 +624,27 @@
     return lines.join("\n");
   }
 
+  // 担当者名があれば、text の1行目の次に STAFF_LINE を差し込む
+  function withStaffLine(text, staffName) {
+    if (!staffName) return text;
+    var i = text.indexOf("\n");
+    var line = STAFF_LINE.replace("{staff}", staffName);
+    return i < 0 ? text + "\n" + line : text.slice(0, i) + "\n" + line + text.slice(i);
+  }
+  // お礼で、表示中の買取日が昨日以前か（そのときは「本日」を「先日」にする）
+  function buyIsPast() {
+    if (!showTicketInfo()) return false;
+    var d = buyDate(), now = new Date();
+    return !!d && d < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
   function build() {
     var staffName = staff.value.trim();
     var parts = [];
     var name = customer.value.trim();
     if (name) parts.push(name.replace(/(様|さん)$/, "") + "様");
     if (state.mode === "ticket") {
-      parts.push(TICKET.opening);
+      parts.push(withStaffLine(TICKET.opening, staffName));
       var th = hitokoto.value.trim();
       if (th) parts.push(th);
       parts.push(ticketBlock());
@@ -637,13 +653,15 @@
       return parts.join("\n\n");
     }
     if (state.mode === "reply") {
-      parts.push(REPLY[state.reply]);
+      parts.push(withStaffLine(REPLY[state.reply], staffName));
       if (state.reply === "consult" || $("reply-sig").checked) parts.push(signature());
       return parts.join("\n\n");
     }
     var opening = OPENING[state.visit];
-    parts.push(staffName ? opening.withStaff.replace("{staff}", staffName) : opening.plain);
-    parts.push(RESULT[state.result]);
+    var past = buyIsPast();
+    var fixDay = function (t) { return past ? t.replace(/本日/g, "先日") : t; };
+    parts.push(fixDay(staffName ? opening.withStaff.replace("{staff}", staffName) : opening.plain));
+    parts.push(fixDay(RESULT[state.result]));
     var h = hitokoto.value.trim();
     if (h) parts.push(h);
     if (showTicketInfo()) parts.push(ticketBlock());
