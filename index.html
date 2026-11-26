@@ -350,6 +350,10 @@
         <div class="step-head"><span class="step-no" id="work-step-no">3</span>出勤日 <small>タップで複数選べます</small></div>
         <div class="cal" id="cal" role="group" aria-label="出勤日"></div>
         <p class="cal-note" id="cal-note"></p>
+        <div class="seg seg-2" id="seg-workfmt" role="group" aria-label="連続した出勤日の書き方">
+          <button type="button" data-value="each" aria-pressed="true"><b>1日ずつ</b><span>19日・20日・21日</span></button>
+          <button type="button" data-value="range" aria-pressed="false"><b>〜でまとめる</b><span>19日〜21日</span></button>
+        </div>
       </div>
 
       <div class="step thanks-ticket">
@@ -495,7 +499,7 @@
   }
   // ==================================================================
 
-  var state = { mode: "thanks", reply: "thanks", result: "seiritsu", visit: "1", edited: false, lastBuilt: "" };
+  var state = { mode: "thanks", reply: "thanks", result: "seiritsu", visit: "1", workFmt: "each", edited: false, lastBuilt: "" };
   var $ = function (id) { return document.getElementById(id); };
   var msg = $("message"), hitokoto = $("hitokoto"), customer = $("customer"), staff = $("staff"), store = $("store");
 
@@ -690,7 +694,19 @@
   }
   function workLine() {
     var days = selectedWorkDays();
-    return days.length ? TICKET.work.replace("{days}", days.map(fmtDate).join("・")) : "";
+    return days.length ? TICKET.work.replace("{days}", fmtWorkDays(days)) : "";
+  }
+  // 出勤日の並べ方。"range" のときは2日以上連続した日を「始点〜終点」にまとめる
+  function fmtWorkDays(days) {
+    if (state.workFmt !== "range") return days.map(fmtDate).join("・");
+    var out = [], i = 0;
+    while (i < days.length) {
+      var j = i;
+      while (j + 1 < days.length && days[j + 1] - days[j] <= 36e5 * 25) j++; // 翌日（夏時間ずれ分の余裕込み）
+      out.push(j > i ? fmtDate(days[i]) + "〜" + fmtDate(days[j]) : fmtDate(days[i]));
+      i = j + 1;
+    }
+    return out.join("・");
   }
   function ticketBlock() {
     var ex = expiryDate();
@@ -795,6 +811,14 @@
   bindSeg("seg-reply", "reply");
   bindSeg("seg-result", "result");
   bindSeg("seg-visit", "visit");
+  // 出勤日の書き方は人ごとの好みなので、この端末に覚えておく（「次のお客様へ」でも戻さない）
+  var WORKFMT_KEY = "thanks-line-nagasaki-workfmt";
+  try { if (localStorage.getItem(WORKFMT_KEY) === "range") state.workFmt = "range"; } catch (e) {}
+  select("seg-workfmt", state.workFmt);
+  bindSeg("seg-workfmt", "workFmt");
+  $("seg-workfmt").addEventListener("click", function () {
+    try { localStorage.setItem(WORKFMT_KEY, state.workFmt); } catch (e) {}
+  });
   [customer, hitokoto, staff].forEach(function (el) { el.addEventListener("input", update); });
   $("reply-sig").addEventListener("change", update);
   $("ticket-skip").addEventListener("change", function () { renderCal(); applyMode(); update(); });
